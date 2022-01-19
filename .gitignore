@@ -1,5 +1,8 @@
 *
 !.gitignore
+!*.yaml
+!*.yaml.lock
 !*.hs
 !*.c
 !*.cpp
+test.hs

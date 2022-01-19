@@ -16,20 +16,20 @@ main = C.interact $ runScanner input >>> solve >>> output
 
 -- main = C.interact $ runScanner (numberOf input) >>> map (solve >>> output) >>> C.unlines
 
--- type Input = ()
--- type Output = ()
+type Input = ()
 
--- input :: Scanner Input
+type Output = ()
+
+input :: Scanner Input
 input = undefined
 
--- output :: Output -> C.ByteString
+output :: Output -> C.ByteString
 output = undefined
 
--- solve :: Input -> Output
+solve :: Input -> Output
 solve = undefined
 
--------------------------- Template ------------------------------------------
--- Lists
+----------------------------------- Template -----------------------------------
 groupOn :: Eq b => (a -> b) -> [a] -> [[a]]
 groupOn = groupBy . on (==)
 
@@ -49,7 +49,6 @@ count = countBy . (==)
 countBy :: (a -> Bool) -> [a] -> Int
 countBy p = length . filter p
 
--- Scanner
 type Scanner = State [C.ByteString]
 
 runScanner :: Scanner a -> C.ByteString -> a
@@ -98,13 +97,8 @@ till p s = do
     then return []
     else (:) <$> s <*> till p s
 
-times :: Int -> Scanner a -> Scanner [a]
-times = replicateM
-
-(><) = times
-
 two, three, four :: Scanner a -> Scanner [a]
-[two, three, four] = map times [2 .. 4]
+[two, three, four] = map replicateM [2 .. 4]
 
 pair :: Scanner a -> Scanner b -> Scanner (a, b)
 pair = liftA2 (,)
