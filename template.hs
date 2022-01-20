@@ -6,14 +6,15 @@ import Control.Applicative (liftA2)
 import Control.Arrow ((>>>))
 import Control.Monad
 import Control.Monad.State (State, evalState, get, gets, put)
-import qualified Data.ByteString.Lazy.Char8 as C
+import qualified Data.ByteString.Char8 as C
+import Data.Char
 import Data.Function
 import Data.Int
-import Data.List (groupBy)
+import Data.List hiding (head, tail)
 import Data.List.NonEmpty (NonEmpty, head, tail)
 import qualified Data.List.NonEmpty as NE
 import Data.Maybe
-import Prelude hiding (fromJust, head, tail)
+import Prelude hiding (head, tail)
 import qualified Prelude
 
 main :: IO ()
@@ -21,9 +22,9 @@ main = C.interact $ runScanner input >>> solve >>> output
 
 -- main = C.interact $ runScanner (numberOf input) >>> map (solve >>> output) >>> C.unlines
 
-newtype Input = Input ()
+type Input = ()
 
-newtype Output = Output ()
+type Output = ()
 
 input :: Scanner Input
 input = undefined

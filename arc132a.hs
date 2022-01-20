@@ -13,7 +13,7 @@ import Control.Monad.State
     put,
   )
 import Data.Array.IArray
-import qualified Data.ByteString.Lazy.Char8 as C
+import qualified Data.ByteString.Char8 as C
 import Data.Function
 import Data.Int
 import Data.List
@@ -26,9 +26,9 @@ data Cell = B | W
 
 type Query = (Int, Int)
 
-newtype Input = Input (Int, Array Int Int, Array Int Int, [Query])
+type Input = (Int, Array Int Int, Array Int Int, [Query])
 
-newtype Output = Output [Cell]
+type Output = [Cell]
 
 input :: Scanner Input
 input = do
@@ -37,13 +37,13 @@ input = do
   cs <- replicateM n int
   q <- int
   qs <- replicateM q (pair int int)
-  pure $ Input (n, listArray (1, n) rs, listArray (1, n) cs, qs)
+  pure (n, listArray (1, n) rs, listArray (1, n) cs, qs)
 
 output :: Output -> C.ByteString
-output (Output cells) = C.concat $ map (\case B -> "#"; W -> ".") cells
+output = C.concat . map (\case B -> "#"; W -> ".")
 
 solve :: Input -> Output
-solve (Input (n, rs, cs, qs)) = Output $ map solveQuery qs
+solve (n, rs, cs, qs) = map solveQuery qs
   where
     solveQuery = \(r, c) -> if rs ! r + cs ! c > n then B else W
 
