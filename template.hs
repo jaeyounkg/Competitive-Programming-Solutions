@@ -26,10 +26,8 @@ type Input = ()
 
 type Output = ()
 
-input :: Scanner Input
 input = undefined
 
-output :: Output -> C.ByteString
 output = undefined
 
 solve :: Input -> Output

@@ -25,10 +25,8 @@ type Input = [Int]
 
 type Output = Int
 
-input :: Scanner Input
 input = replicateM 3 int
 
-output :: Output -> C.ByteString
 output = showB
 
 solve :: Input -> Output

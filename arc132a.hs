@@ -30,7 +30,6 @@ type Input = (Int, Array Int Int, Array Int Int, [Query])
 
 type Output = [Cell]
 
-input :: Scanner Input
 input = do
   n <- int
   rs <- replicateM n int
@@ -39,7 +38,6 @@ input = do
   qs <- replicateM q (pair int int)
   pure (n, listArray (1, n) rs, listArray (1, n) cs, qs)
 
-output :: Output -> C.ByteString
 output = C.concat . map (\case B -> "#"; W -> ".")
 
 solve :: Input -> Output
