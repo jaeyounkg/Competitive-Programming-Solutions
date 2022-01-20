@@ -16,9 +16,9 @@ main = C.interact $ runScanner input >>> solve >>> output
 
 -- main = C.interact $ runScanner (numberOf input) >>> map (solve >>> output) >>> C.unlines
 
-type Input = ()
+newtype Input = Input ()
 
-type Output = ()
+newtype Output = Output ()
 
 input :: Scanner Input
 input = undefined
