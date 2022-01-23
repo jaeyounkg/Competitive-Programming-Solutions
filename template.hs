@@ -1,25 +1,21 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 
-import Control.Applicative
-import Control.Arrow ((>>>))
-import Control.Monad
-import Control.Monad.State (State, evalState, get, gets, put)
-import Data.Array.IArray (Array, (!))
-import qualified Data.Array.IArray as A
-import Data.Bits
-import qualified Data.ByteString.Char8 as C
-import Data.Char
-import Data.Function
-import Data.Int
-import Data.List (filter, groupBy, length, splitAt, zipWith)
-import Data.List.NonEmpty (NonEmpty, head, tail)
-import qualified Data.List.NonEmpty as NE
-import Data.Maybe
-import Prelude hiding (head, tail)
-import qualified Prelude
+import           Control.Applicative
+import           Control.Arrow                  ( (>>>) )
+import           Control.Monad
+import           Control.Monad.State
+import           Data.Bits
+import qualified Data.ByteString.Char8         as C
+import           Data.Char
+import           Data.Function
+import           Data.Int
+import           Data.List
+import           Data.List.NonEmpty             ( NonEmpty )
+import qualified Data.List.NonEmpty            as NE
+import           Data.Maybe
+import qualified Data.Vector.Unboxed           as VU
 
 main :: IO ()
 main = C.interact $ runScanner input >>> solve >>> output
@@ -49,7 +45,7 @@ adjacents :: NonEmpty a -> [(a, a)]
 adjacents = adjacentsWith (,)
 
 adjacentsWith :: (a -> a -> b) -> NonEmpty a -> [b]
-adjacentsWith f xs = zipWith f (NE.toList xs) (tail xs)
+adjacentsWith f xs = zipWith f (NE.toList xs) (NE.tail xs)
 
 count :: Eq a => a -> [a] -> Int
 count = countBy . (==)
@@ -75,7 +71,9 @@ peek :: Scanner C.ByteString
 peek = gets Prelude.head
 
 bstr :: Scanner C.ByteString
-bstr = get >>= \case [] -> pure ""; s : ss -> put ss >> pure s
+bstr = get >>= \case
+    []     -> pure ""
+    s : ss -> put ss >> pure s
 
 str :: Scanner String
 str = C.unpack <$> bstr
@@ -99,14 +97,14 @@ decimal :: Int -> Scanner Int
 decimal p = round . ((10 ^ p) *) <$> double
 
 lotsOf :: Scanner a -> Scanner [a]
-lotsOf s = get >>= \case [] -> pure []; _ -> liftA2 (:) s (lotsOf s)
+lotsOf s = get >>= \case
+    [] -> pure []
+    _  -> liftA2 (:) s (lotsOf s)
 
 till :: (C.ByteString -> Bool) -> Scanner a -> Scanner [a]
 till p s = do
-  t <- peek
-  if p t
-    then pure []
-    else (:) <$> s <*> till p s
+    t <- peek
+    if p t then pure [] else (:) <$> s <*> till p s
 
 pair :: Scanner a -> Scanner b -> Scanner (a, b)
 pair = liftA2 (,)

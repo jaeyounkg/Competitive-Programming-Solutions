@@ -1,95 +1,96 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 
-import Control.Applicative
-import Control.Arrow ((>>>))
-import Control.Monad
-import Control.Monad.State (State, evalState, get, gets, put)
-import Data.Array.IArray (Array, (!), (//))
-import qualified Data.Array.IArray as A
-import Data.Bits
-import qualified Data.ByteString.Char8 as C
-import Data.Char
-import Data.Function
-import Data.Int
-import Data.List hiding (head, tail)
-import Data.List.NonEmpty (NonEmpty, head, tail)
-import qualified Data.List.NonEmpty as NE
-import Data.Maybe
-import Debug.Trace (traceShow, traceShowId)
-import Prelude hiding (head, tail)
-import qualified Prelude
+import           Control.Applicative
+import           Control.Arrow                  ( (>>>) )
+import           Control.Monad
+import           Control.Monad.State
+import           Data.Bits
+import qualified Data.ByteString.Char8         as C
+import           Data.Char
+import           Data.Function
+import           Data.Int
+import qualified Data.Array                    as A
+import           Data.List
+import           Data.List.NonEmpty             ( NonEmpty )
+import qualified Data.List.NonEmpty            as NE
+import           Data.Maybe
+import           Data.Vector.Unboxed            ( (!) )
+import qualified Data.Vector.Unboxed           as VU
+import           Debug.Trace                    ( traceShow
+                                                , traceShowId
+                                                )
+import           Data.Ix                        ( Ix(inRange) )
 
 main :: IO ()
 main = C.interact $ runScanner input >>> solve >>> output
 
-type Input = (Int, Int, Array Int Int)
+type Input = (Int, Int, VU.Vector Int)
 
 type Output = Int
 
+type States = Int
+
+-- change to 0-based indexing
 input = do
-  (n, d) <- two int
-  as <- lotsOf int
-  pure (n, d, A.listArray (1, n) as)
+    (n, d) <- two int
+    as     <- lotsOf int
+    pure (n, d, VU.fromList . map (subtract 1) $ as)
 
 output = showB
 
 plus a b = (a + b) `mod` 998244353
 
 solve :: Input -> Output
-solve (n, d, as) = foldl1' plus $ A.elems $ foldl' update dp_init [1 .. n]
+solve (n, d, as) = VU.foldl1' plus $ foldl' update dp_init [0 .. n - 1]
   where
-    bnds = (0, 1 `shiftL` (d * 2 + 1) - 1)
+    n_states = 1 `shiftL` (d * 2 + 1)
 
     -- states
-    -- defined as a lazy Array for memoization
-    s_base :: Array Int Int
-    s_base =
-      A.listArray
-        (0, n)
-        [ let f = \k -> fromEnum (A.inRange (1, n) (i + k) && as ! (i + k) > 0) `shiftL` (d + k)
-           in sum $ map f [- d .. d]
-          | i <- [0 .. n]
-        ]
-    s_init = s_base ! 0
+    get_s_base i = sum $ map (f i) [-d .. d]
+      where
+        f i k = fromEnum (inRange (0, n - 1) (i + k) && as ! (i + k) >= 0) `shiftL` (d + k)
+    -- defined as a Vector for memoization
+    s_base :: VU.Vector States
+    s_base = VU.generate n get_s_base
+    s_init = get_s_base (-1)
 
     -- dp[i][s]: i番目までおいてsの状態（固定されたiを含む）になったときの組み合わせの数
-    dp_init :: Array Int Int
-    dp_init = A.listArray bnds (repeat 0) // [(s_init, 1)]
+    dp_init :: VU.Vector Int
+    dp_init = VU.generate n_states $ \s -> if s == s_init then 1 else 0
 
-    update dp_prev i = A.listArray bnds $ map compute (A.range bnds)
+    update dp_prev i = VU.generate n_states compute
       where
         prev = flip shiftL 1 . flip clearBit (d * 2)
         -- edge cases
-        compute s =
-          if
-              -- including unavailable bits
-              | any (testBit s . (+ d)) . filter (\k -> not $ A.inRange (1, n) (i + k)) $ [- d .. d] -> 0
-              -- not including s_base
-              | (s `xor` s_base ! i) .&. s_base ! i > 0 -> 0
-              -- already put, or putting at i + d
-              | i `elem` as || (s `xor` s_base ! i) `testBit` (d * 2) -> (dp_prev ! prev s) `plus` (dp_prev ! (prev s + 1))
-              | otherwise -> compute' s
+        compute s = if
+            | any (testBit s . (+ d))
+                . filter (\k -> not $ inRange (0, n - 1) (i + k))
+                $ [-d .. d]
+            -> 0
+            | (s `xor` s_base ! i) .&. s_base ! i > 0
+            -> 0
+            | i `VU.elem` as || (s `xor` s_base ! i) `testBit` (d * 2)
+            -> (dp_prev ! prev s) `plus` (dp_prev ! (prev s + 1))
+            | otherwise
+            -> compute' s
         -- cons cases
-        compute' s =
-          let s_added = s `xor` s_base ! i
-              p k = testBit s_added (d + k)
-              f k =
+        compute' s = (sum . map f . filter p) [-d .. d - 1]
+          where
+            s_added = s `xor` s_base ! i
+            p k = testBit s_added (d + k)
+            f k =
                 let prev_s = prev $ clearBit s (d + k)
-                 in (dp_prev ! prev_s) `plus` (dp_prev ! (prev_s + 1))
-           in (sum . map f . filter p) [- d .. d - 1]
+                in  (dp_prev ! prev_s) `plus` (dp_prev ! (prev_s + 1))
 
 -- Debugging
-
-traceShowDp dp = traceShow (filter (\(_, v) -> v > 0) . A.assocs $ dp)
+traceShowDp dp = traceShow (filter (\(_, v) -> v > 0) . zip [0 ..] . VU.toList $ dp) dp
 
 solveDumber (n, d) = filter p $ permutations [1 .. n]
   where
     p perm = all (\(i, v) -> abs (i - v) <= d) (A.assocs arr)
-      where
-        arr = A.listArray (1, n) perm :: Array Int Int
+        where arr = A.listArray (1, n) perm :: A.Array Int Int
 
 --------------------------------------------------------------------------------
 -- Template: convenience utilities
@@ -105,7 +106,7 @@ adjacents :: NonEmpty a -> [(a, a)]
 adjacents = adjacentsWith (,)
 
 adjacentsWith :: (a -> a -> b) -> NonEmpty a -> [b]
-adjacentsWith f xs = zipWith f (NE.toList xs) (tail xs)
+adjacentsWith f xs = zipWith f (NE.toList xs) (NE.tail xs)
 
 count :: Eq a => a -> [a] -> Int
 count = countBy . (==)
@@ -131,7 +132,9 @@ peek :: Scanner C.ByteString
 peek = gets Prelude.head
 
 bstr :: Scanner C.ByteString
-bstr = get >>= \case [] -> pure ""; s : ss -> put ss >> pure s
+bstr = get >>= \case
+    []     -> pure ""
+    s : ss -> put ss >> pure s
 
 str :: Scanner String
 str = C.unpack <$> bstr
@@ -155,14 +158,14 @@ decimal :: Int -> Scanner Int
 decimal p = round . ((10 ^ p) *) <$> double
 
 lotsOf :: Scanner a -> Scanner [a]
-lotsOf s = get >>= \case [] -> pure []; _ -> liftA2 (:) s (lotsOf s)
+lotsOf s = get >>= \case
+    [] -> pure []
+    _  -> liftA2 (:) s (lotsOf s)
 
 till :: (C.ByteString -> Bool) -> Scanner a -> Scanner [a]
 till p s = do
-  t <- peek
-  if p t
-    then pure []
-    else (:) <$> s <*> till p s
+    t <- peek
+    if p t then pure [] else (:) <$> s <*> till p s
 
 pair :: Scanner a -> Scanner b -> Scanner (a, b)
 pair = liftA2 (,)
