@@ -15,6 +15,7 @@ import           Data.List
 import           Data.List.NonEmpty             ( NonEmpty )
 import qualified Data.List.NonEmpty            as NE
 import           Data.Maybe
+import           Data.Vector.Unboxed            ( (!) )
 import qualified Data.Vector.Unboxed           as VU
 
 main :: IO ()

@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -O2 -threaded #-}
 
 import           Control.Applicative
 import           Control.Arrow                  ( (>>>) )
@@ -22,6 +23,13 @@ import           Debug.Trace                    ( traceShow
                                                 , traceShowId
                                                 )
 import           Data.Ix                        ( Ix(inRange) )
+import           Control.Parallel.Strategies    ( using
+                                                , parList
+                                                , rdeepseq
+                                                )
+import           System.Environment             ( getArgs
+                                                , getEnvironment
+                                                )
 
 main :: IO ()
 main = C.interact $ runScanner input >>> solve >>> output
@@ -60,7 +68,8 @@ solve (n, d, as) = VU.foldl1' plus $ foldl' update dp_init [0 .. n - 1]
     dp_init :: VU.Vector Int
     dp_init = VU.generate n_states $ \s -> if s == s_init then 1 else 0
 
-    update dp_prev i = VU.generate n_states compute
+    update dp_prev i =
+        VU.fromList . flip using (parList rdeepseq) . map compute $ [0 .. n_states - 1]
       where
         prev = flip shiftL 1 . flip clearBit (d * 2)
         -- edge cases
